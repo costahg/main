@@ -1,40 +1,38 @@
 function App() {
   return (
-    <main className="min-h-screen bg-slate-50 px-6 py-12 text-slate-950">
-      <section className="mx-auto flex min-h-[calc(100vh-6rem)] max-w-3xl flex-col items-center justify-center text-center">
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
-          <p className="mb-3 text-sm font-medium uppercase tracking-widest text-slate-500">
-            MVP Frontend
-          </p>
+    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-50">
+      <section className="mx-auto flex min-h-[calc(100vh-5rem)] max-w-4xl flex-col items-center justify-center text-center">
+        <div className="rounded-full border border-slate-700 bg-slate-900 px-4 py-2 text-sm text-slate-300">
+          React + Vite + TypeScript + Tailwind
+        </div>
 
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            React + Vite pronto no Termux
-          </h1>
+        <h1 className="mt-8 max-w-3xl text-4xl font-bold tracking-tight sm:text-6xl">
+          Frontend pronto para Cloudflare Pages
+        </h1>
 
-          <p className="mt-4 text-base leading-7 text-slate-600">
-            Esse frontend está preparado para rodar localmente no Android e
-            depois ser publicado no Cloudflare Pages como site estático.
-          </p>
+        <p className="mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+          Esse projeto está rodando no Termux Android e será publicado como site
+          estático. O backend FastAPI ficará separado no Cloud Run.
+        </p>
 
-          <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-            <a
-              href="https://vite.dev"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-lg bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-            >
-              Ver Vite
-            </a>
+        <div className="mt-10 flex flex-col gap-3 sm:flex-row">
+          <a
+            href="https://vite.dev"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl bg-slate-50 px-5 py-3 font-medium text-slate-950 transition hover:bg-slate-200"
+          >
+            Ver Vite
+          </a>
 
-            <a
-              href="https://developers.cloudflare.com/pages/"
-              target="_blank"
-              rel="noreferrer"
-              className="rounded-lg border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-900 transition hover:bg-slate-100"
-            >
-              Cloudflare Pages
-            </a>
-          </div>
+          <a
+            href="https://developers.cloudflare.com/pages/"
+            target="_blank"
+            rel="noreferrer"
+            className="rounded-xl border border-slate-700 px-5 py-3 font-medium text-slate-100 transition hover:bg-slate-900"
+          >
+            Cloudflare Pages
+          </a>
         </div>
       </section>
     </main>
