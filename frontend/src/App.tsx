@@ -25,9 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 
-type ApiStatus = "idle" | "loading" | "success" | "error"
-
-const API_URL = import.meta.env.VITE_API_URL as string | undefined
+const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000"
 
 const stackItems = [
   {
@@ -63,10 +61,8 @@ function App() {
     "Teste visual do frontend rodando no Termux Android."
   )
   const [checked, setChecked] = useState(false)
-  const [apiStatus, setApiStatus] = useState<ApiStatus>("idle")
-  const [apiMessage, setApiMessage] = useState(
-    "Nenhuma chamada feita ainda."
-  )
+  const [apiStatus, setApiStatus] = useState<string>("Ainda não testado")
+  const [apiOk, setApiOk] = useState<boolean | null>(null)
 
   const previewMessage = useMemo(() => {
     return {
@@ -75,18 +71,9 @@ function App() {
     }
   }, [projectName, notes])
 
-  async function testApiConnection() {
-    if (!API_URL) {
-      setApiStatus("error")
-      setApiMessage(
-        "VITE_API_URL não está configurada. Isso é normal enquanto o FastAPI ainda não existir."
-      )
-      return
-    }
-
+  async function testarBackend() {
     try {
-      setApiStatus("loading")
-      setApiMessage("Chamando backend...")
+      setApiStatus("Chamando backend...")
 
       const response = await fetch(`${API_URL}/health`)
 
@@ -96,18 +83,14 @@ function App() {
 
       const data = await response.json()
 
-      setApiStatus("success")
-      setApiMessage(
-        typeof data?.message === "string"
-          ? data.message
-          : "Backend respondeu com sucesso."
-      )
+      setApiOk(Boolean((data as any).ok))
+      setApiStatus((data as any).message ?? "Backend respondeu.")
     } catch (error) {
-      setApiStatus("error")
-      setApiMessage(
+      setApiOk(false)
+      setApiStatus(
         error instanceof Error
-          ? `Falha ao chamar API: ${error.message}`
-          : "Falha desconhecida ao chamar API."
+          ? `Erro ao chamar backend: ${error.message}`
+          : "Erro desconhecido ao chamar backend."
       )
     }
   }
@@ -116,8 +99,8 @@ function App() {
     setProjectName("Meu MVP")
     setNotes("Teste visual do frontend rodando no Termux Android.")
     setChecked(false)
-    setApiStatus("idle")
-    setApiMessage("Nenhuma chamada feita ainda.")
+    setApiStatus("Ainda não testado")
+    setApiOk(null)
   }
 
   return (
@@ -282,28 +265,15 @@ function App() {
                   </p>
                 </div>
 
-                <div className="flex items-start gap-3 rounded-lg border p-4">
-                  {apiStatus === "loading" ? (
-                    <Loader2 className="mt-0.5 size-5 animate-spin" />
-                  ) : apiStatus === "success" ? (
-                    <CheckCircle2 className="mt-0.5 size-5 text-green-600" />
-                  ) : apiStatus === "error" ? (
-                    <XCircle className="mt-0.5 size-5 text-red-600" />
-                  ) : (
-                    <Globe2 className="mt-0.5 size-5 text-muted-foreground" />
-                  )}
-
-                  <p className="text-sm leading-6">{apiMessage}</p>
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <p className={apiOk === false ? "text-red-500" : "text-green-500"}>
+                    {apiStatus}
+                  </p>
                 </div>
               </CardContent>
 
               <CardFooter>
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={testApiConnection}
-                  disabled={apiStatus === "loading"}
-                >
+                <Button onClick={testarBackend}>
                   Testar backend
                 </Button>
               </CardFooter>
