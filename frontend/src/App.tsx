@@ -5,8 +5,11 @@ import {
   Code2,
   Database,
   FolderOpen,
+  Globe2,
+  Loader2,
   Server,
   Smartphone,
+  XCircle,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -21,6 +24,10 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+
+type ApiStatus = "idle" | "loading" | "success" | "error"
+
+const API_URL = import.meta.env.VITE_API_URL as string | undefined
 
 const stackItems = [
   {
@@ -41,12 +48,12 @@ const stackItems = [
   {
     icon: FolderOpen,
     title: "Storage",
-    description: "Google Drive acessado com segurança pelo backend",
+    description: "Google Drive acessado pelo backend",
   },
   {
     icon: Cloud,
     title: "Deploy",
-    description: "Cloudflare Pages servindo o frontend estático",
+    description: "Cloudflare Pages servindo arquivos estáticos",
   },
 ]
 
@@ -56,16 +63,62 @@ function App() {
     "Teste visual do frontend rodando no Termux Android."
   )
   const [checked, setChecked] = useState(false)
+  const [apiStatus, setApiStatus] = useState<ApiStatus>("idle")
+  const [apiMessage, setApiMessage] = useState(
+    "Nenhuma chamada feita ainda."
+  )
 
   const previewMessage = useMemo(() => {
-    const cleanName = projectName.trim() || "Projeto sem nome"
-    const cleanNotes = notes.trim() || "Sem observações por enquanto."
-
     return {
-      name: cleanName,
-      notes: cleanNotes,
+      name: projectName.trim() || "Projeto sem nome",
+      notes: notes.trim() || "Sem observações por enquanto.",
     }
   }, [projectName, notes])
+
+  async function testApiConnection() {
+    if (!API_URL) {
+      setApiStatus("error")
+      setApiMessage(
+        "VITE_API_URL não está configurada. Isso é normal enquanto o FastAPI ainda não existir."
+      )
+      return
+    }
+
+    try {
+      setApiStatus("loading")
+      setApiMessage("Chamando backend...")
+
+      const response = await fetch(`${API_URL}/health`)
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      setApiStatus("success")
+      setApiMessage(
+        typeof data?.message === "string"
+          ? data.message
+          : "Backend respondeu com sucesso."
+      )
+    } catch (error) {
+      setApiStatus("error")
+      setApiMessage(
+        error instanceof Error
+          ? `Falha ao chamar API: ${error.message}`
+          : "Falha desconhecida ao chamar API."
+      )
+    }
+  }
+
+  function resetTest() {
+    setProjectName("Meu MVP")
+    setNotes("Teste visual do frontend rodando no Termux Android.")
+    setChecked(false)
+    setApiStatus("idle")
+    setApiMessage("Nenhuma chamada feita ainda.")
+  }
 
   return (
     <main className="min-h-screen bg-background text-foreground">
@@ -78,13 +131,32 @@ function App() {
 
           <div className="space-y-4">
             <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
-              Frontend pronto para testar
+              Frontend pronto para teste
             </h1>
 
             <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Esta tela testa React, estado com hooks, Tailwind, shadcn/ui,
-              ícones, alias de importação e build estático para Cloudflare Pages.
+              Esta tela valida React, estado com hooks, Tailwind, shadcn/ui,
+              ícones, alias de importação, variável de ambiente e build estático
+              para Cloudflare Pages.
             </p>
+          </div>
+
+          <div className="flex flex-wrap justify-center gap-2 text-sm text-muted-foreground">
+            <span className="rounded-full border bg-muted/50 px-3 py-1">
+              Vite
+            </span>
+            <span className="rounded-full border bg-muted/50 px-3 py-1">
+              TypeScript
+            </span>
+            <span className="rounded-full border bg-muted/50 px-3 py-1">
+              Tailwind
+            </span>
+            <span className="rounded-full border bg-muted/50 px-3 py-1">
+              shadcn/ui
+            </span>
+            <span className="rounded-full border bg-muted/50 px-3 py-1">
+              Cloudflare Pages
+            </span>
           </div>
         </div>
 
@@ -107,12 +179,14 @@ function App() {
           })}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
+        <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
           <Card>
             <CardHeader>
               <CardTitle>Formulário de teste</CardTitle>
               <CardDescription>
-                Se os inputs, labels e botão aparecem bonitos, o shadcn está funcionando.
+                Se os inputs, labels e botões aparecem bonitos, o shadcn está
+                funcionando. Se o texto muda ao digitar, o estado do React está
+                funcionando.
               </CardDescription>
             </CardHeader>
 
@@ -143,55 +217,98 @@ function App() {
                 Testar interação
               </Button>
 
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setProjectName("Meu MVP")
-                  setNotes("Teste visual do frontend rodando no Termux Android.")
-                  setChecked(false)
-                }}
-              >
+              <Button variant="outline" onClick={resetTest}>
                 Resetar
               </Button>
             </CardFooter>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Status do teste</CardTitle>
-              <CardDescription>
-                Aqui você confirma se renderização, estado e classes estão ok.
-              </CardDescription>
-            </CardHeader>
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Status do frontend</CardTitle>
+                <CardDescription>
+                  Aqui você confirma renderização, estado e classes.
+                </CardDescription>
+              </CardHeader>
 
-            <CardContent className="space-y-4">
-              <div className="rounded-lg border bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">Projeto</p>
-                <p className="mt-1 font-medium">{previewMessage.name}</p>
-              </div>
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground">Projeto</p>
+                  <p className="mt-1 font-medium">{previewMessage.name}</p>
+                </div>
 
-              <div className="rounded-lg border bg-muted/50 p-4">
-                <p className="text-sm text-muted-foreground">Notas</p>
-                <p className="mt-1 text-sm leading-6">{previewMessage.notes}</p>
-              </div>
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground">Notas</p>
+                  <p className="mt-1 text-sm leading-6">
+                    {previewMessage.notes}
+                  </p>
+                </div>
 
-              <div className="flex items-center gap-2 rounded-lg border p-4">
-                <CheckCircle2
-                  className={
-                    checked
-                      ? "size-5 text-green-600"
-                      : "size-5 text-muted-foreground"
-                  }
-                />
+                <div className="flex items-center gap-2 rounded-lg border p-4">
+                  <CheckCircle2
+                    className={
+                      checked
+                        ? "size-5 text-green-600"
+                        : "size-5 text-muted-foreground"
+                    }
+                  />
 
-                <p className="text-sm">
-                  {checked
-                    ? "Interação funcionando. Pode testar o build."
-                    : "Clique no botão para testar o estado do React."}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+                  <p className="text-sm">
+                    {checked
+                      ? "Interação funcionando. Pode testar preview ou deploy."
+                      : "Clique no botão para testar o estado do React."}
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Teste de API</CardTitle>
+                <CardDescription>
+                  Esse teste tenta chamar <code>/health</code> no FastAPI quando
+                  você configurar a variável VITE_API_URL.
+                </CardDescription>
+              </CardHeader>
+
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border bg-muted/50 p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Variável detectada
+                  </p>
+                  <p className="mt-1 break-all text-sm font-medium">
+                    {API_URL || "VITE_API_URL ainda não configurada"}
+                  </p>
+                </div>
+
+                <div className="flex items-start gap-3 rounded-lg border p-4">
+                  {apiStatus === "loading" ? (
+                    <Loader2 className="mt-0.5 size-5 animate-spin" />
+                  ) : apiStatus === "success" ? (
+                    <CheckCircle2 className="mt-0.5 size-5 text-green-600" />
+                  ) : apiStatus === "error" ? (
+                    <XCircle className="mt-0.5 size-5 text-red-600" />
+                  ) : (
+                    <Globe2 className="mt-0.5 size-5 text-muted-foreground" />
+                  )}
+
+                  <p className="text-sm leading-6">{apiMessage}</p>
+                </div>
+              </CardContent>
+
+              <CardFooter>
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={testApiConnection}
+                  disabled={apiStatus === "loading"}
+                >
+                  Testar backend
+                </Button>
+              </CardFooter>
+            </Card>
+          </div>
         </div>
       </section>
     </main>
