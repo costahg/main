@@ -4,12 +4,8 @@ import {
   Cloud,
   Code2,
   Database,
-  FolderOpen,
-  Globe2,
   Loader2,
   Server,
-  Smartphone,
-  XCircle,
 } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
@@ -21,129 +17,106 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import {
+  getApiUrl,
+  getHealth,
+  getProjects,
+  type Project,
+} from "@/lib/api"
 
-const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000"
+type RequestStatus = "idle" | "loading" | "success" | "error"
 
 const stackItems = [
   {
     icon: Code2,
     title: "Frontend",
-    description: "React + Vite + TypeScript + Tailwind + shadcn/ui",
+    description: "React estático com Vite no Cloudflare Pages.",
   },
   {
     icon: Server,
     title: "Backend",
-    description: "FastAPI separado, pronto para Cloud Run",
+    description: "FastAPI separado rodando no Cloud Run.",
   },
   {
     icon: Database,
     title: "Banco",
-    description: "Supabase Postgres para dados relacionais",
-  },
-  {
-    icon: FolderOpen,
-    title: "Storage",
-    description: "Google Drive acessado pelo backend",
+    description: "Supabase Postgres acessado somente pelo backend.",
   },
   {
     icon: Cloud,
     title: "Deploy",
-    description: "Cloudflare Pages servindo arquivos estáticos",
+    description: "Fluxo provado entre domínio, API e banco.",
   },
 ]
 
 function App() {
-  const [projectName, setProjectName] = useState("Meu MVP")
-  const [notes, setNotes] = useState(
-    "Teste visual do frontend rodando no Termux Android."
-  )
-  const [checked, setChecked] = useState(false)
-  const [apiStatus, setApiStatus] = useState<string>("Ainda não testado")
-  const [apiOk, setApiOk] = useState<boolean | null>(null)
+  const [healthStatus, setHealthStatus] = useState<RequestStatus>("idle")
+  const [databaseStatus, setDatabaseStatus] = useState<RequestStatus>("idle")
+  const [healthMessage, setHealthMessage] = useState("Ainda não testado.")
+  const [databaseMessage, setDatabaseMessage] = useState("Ainda não testado.")
+  const [projects, setProjects] = useState<Project[]>([])
 
-  const previewMessage = useMemo(() => {
-    return {
-      name: projectName.trim() || "Projeto sem nome",
-      notes: notes.trim() || "Sem observações por enquanto.",
-    }
-  }, [projectName, notes])
+  const apiUrl = useMemo(() => getApiUrl(), [])
 
-  async function testarBackend() {
+  async function testBackend() {
     try {
-      setApiStatus("Chamando backend...")
+      setHealthStatus("loading")
+      setHealthMessage("Chamando /health...")
 
-      const response = await fetch(`${API_URL}/health`)
+      const data = await getHealth()
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`)
-      }
-
-      const data = await response.json()
-
-      setApiOk(Boolean((data as any).ok))
-      setApiStatus((data as any).message ?? "Backend respondeu.")
+      setHealthStatus(data.ok ? "success" : "error")
+      setHealthMessage(data.message ?? "Backend respondeu.")
     } catch (error) {
-      setApiOk(false)
-      setApiStatus(
-        error instanceof Error
-          ? `Erro ao chamar backend: ${error.message}`
-          : "Erro desconhecido ao chamar backend."
-      )
+      setHealthStatus("error")
+      setHealthMessage(getErrorMessage(error))
     }
   }
 
-  function resetTest() {
-    setProjectName("Meu MVP")
-    setNotes("Teste visual do frontend rodando no Termux Android.")
-    setChecked(false)
-    setApiStatus("Ainda não testado")
-    setApiOk(null)
+  async function testProjects() {
+    try {
+      setDatabaseStatus("loading")
+      setDatabaseMessage("Chamando /projects...")
+      setProjects([])
+
+      const data = await getProjects()
+
+      setProjects(data.projects)
+      setDatabaseStatus(data.ok ? "success" : "error")
+      setDatabaseMessage(
+        data.projects.length > 0
+          ? `${data.projects.length} projeto(s) carregado(s) do Supabase.`
+          : "A API respondeu, mas ainda não há projetos."
+      )
+    } catch (error) {
+      setDatabaseStatus("error")
+      setDatabaseMessage(getErrorMessage(error))
+    }
   }
 
   return (
     <main className="min-h-screen bg-background text-foreground">
       <section className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center gap-8 px-6 py-10">
-        <div className="flex flex-col gap-4 text-center sm:items-center">
+        <header className="space-y-4 text-center">
           <div className="mx-auto inline-flex w-fit items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground shadow-sm">
-            <Smartphone className="size-4" />
-            Rodando no Termux Android
+            <CheckCircle2 className="size-4" />
+            Tigrify, fatia vertical de banco
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
-              Frontend pronto para teste
+              Frontend, backend e banco conectados
             </h1>
 
             <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Esta tela valida React, estado com hooks, Tailwind, shadcn/ui,
-              ícones, alias de importação, variável de ambiente e build estático
-              para Cloudflare Pages.
+              Esta tela valida o caminho completo: Cloudflare Pages chama o
+              Cloud Run, o FastAPI consulta o Supabase e o frontend mostra os
+              dados reais.
             </p>
           </div>
+        </header>
 
-          <div className="flex flex-wrap justify-center gap-2 text-sm text-muted-foreground">
-            <span className="rounded-full border bg-muted/50 px-3 py-1">
-              Vite
-            </span>
-            <span className="rounded-full border bg-muted/50 px-3 py-1">
-              TypeScript
-            </span>
-            <span className="rounded-full border bg-muted/50 px-3 py-1">
-              Tailwind
-            </span>
-            <span className="rounded-full border bg-muted/50 px-3 py-1">
-              shadcn/ui
-            </span>
-            <span className="rounded-full border bg-muted/50 px-3 py-1">
-              Cloudflare Pages
-            </span>
-          </div>
-        </div>
-
-        <div className="grid gap-4 md:grid-cols-5">
+        <div className="grid gap-4 md:grid-cols-4">
           {stackItems.map((item) => {
             const Icon = item.icon
 
@@ -162,127 +135,144 @@ function App() {
           })}
         </div>
 
-        <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
-          <Card>
-            <CardHeader>
-              <CardTitle>Formulário de teste</CardTitle>
-              <CardDescription>
-                Se os inputs, labels e botões aparecem bonitos, o shadcn está
-                funcionando. Se o texto muda ao digitar, o estado do React está
-                funcionando.
-              </CardDescription>
-            </CardHeader>
+        <div className="grid gap-6 lg:grid-cols-2">
+          <StatusCard
+            title="Teste do backend"
+            description="Chama /health para confirmar que o FastAPI respondeu."
+            status={healthStatus}
+            message={healthMessage}
+            buttonLabel="Testar backend"
+            onClick={testBackend}
+          />
 
-            <CardContent className="space-y-5">
-              <div className="space-y-2">
-                <Label htmlFor="project-name">Nome do projeto</Label>
-                <Input
-                  id="project-name"
-                  value={projectName}
-                  onChange={(event) => setProjectName(event.target.value)}
-                  placeholder="Ex: Sistema de documentos"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="project-notes">Observações</Label>
-                <Textarea
-                  id="project-notes"
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Digite uma observação rápida..."
-                />
-              </div>
-            </CardContent>
-
-            <CardFooter className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <Button onClick={() => setChecked(true)}>
-                Testar interação
-              </Button>
-
-              <Button variant="outline" onClick={resetTest}>
-                Resetar
-              </Button>
-            </CardFooter>
-          </Card>
-
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Status do frontend</CardTitle>
-                <CardDescription>
-                  Aqui você confirma renderização, estado e classes.
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border bg-muted/50 p-4">
-                  <p className="text-sm text-muted-foreground">Projeto</p>
-                  <p className="mt-1 font-medium">{previewMessage.name}</p>
-                </div>
-
-                <div className="rounded-lg border bg-muted/50 p-4">
-                  <p className="text-sm text-muted-foreground">Notas</p>
-                  <p className="mt-1 text-sm leading-6">
-                    {previewMessage.notes}
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-2 rounded-lg border p-4">
-                  <CheckCircle2
-                    className={
-                      checked
-                        ? "size-5 text-green-600"
-                        : "size-5 text-muted-foreground"
-                    }
-                  />
-
-                  <p className="text-sm">
-                    {checked
-                      ? "Interação funcionando. Pode testar preview ou deploy."
-                      : "Clique no botão para testar o estado do React."}
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Teste de API</CardTitle>
-                <CardDescription>
-                  Esse teste tenta chamar <code>/health</code> no FastAPI quando
-                  você configurar a variável VITE_API_URL.
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border bg-muted/50 p-4">
-                  <p className="text-sm text-muted-foreground">
-                    Variável detectada
-                  </p>
-                  <p className="mt-1 break-all text-sm font-medium">
-                    {API_URL || "VITE_API_URL ainda não configurada"}
-                  </p>
-                </div>
-
-                <div className="rounded-lg border bg-muted/50 p-4">
-                  <p className={apiOk === false ? "text-red-500" : "text-green-500"}>
-                    {apiStatus}
-                  </p>
-                </div>
-              </CardContent>
-
-              <CardFooter>
-                <Button onClick={testarBackend}>
-                  Testar backend
-                </Button>
-              </CardFooter>
-            </Card>
-          </div>
+          <StatusCard
+            title="Teste do banco"
+            description="Chama /projects para carregar dados reais do Supabase."
+            status={databaseStatus}
+            message={databaseMessage}
+            buttonLabel="Carregar projetos"
+            onClick={testProjects}
+          />
         </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Configuração detectada</CardTitle>
+            <CardDescription>
+              O frontend usa VITE_API_URL como URL base da API.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent>
+            <p className="break-all rounded-lg border bg-muted/50 p-4 text-sm">
+              {apiUrl}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Projetos vindos do Supabase</CardTitle>
+            <CardDescription>
+              Lista carregada pelo backend. O frontend não acessa o banco
+              diretamente.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-3">
+            {projects.length === 0 ? (
+              <p className="rounded-lg border bg-muted/50 p-4 text-sm text-muted-foreground">
+                Nenhum projeto carregado ainda.
+              </p>
+            ) : (
+              projects.map((project) => (
+                <article
+                  key={project.id}
+                  className="rounded-lg border bg-muted/50 p-4"
+                >
+                  <h2 className="font-medium">{project.name}</h2>
+
+                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
+                    {project.notes ?? "Sem observações."}
+                  </p>
+
+                  <p className="mt-3 break-all text-xs text-muted-foreground">
+                    ID: {project.id}
+                  </p>
+                </article>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </section>
     </main>
   )
+}
+
+type StatusCardProps = {
+  title: string
+  description: string
+  status: RequestStatus
+  message: string
+  buttonLabel: string
+  onClick: () => Promise<void>
+}
+
+function StatusCard({
+  title,
+  description,
+  status,
+  message,
+  buttonLabel,
+  onClick,
+}: StatusCardProps) {
+  const isLoading = status === "loading"
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>{title}</CardTitle>
+        <CardDescription>{description}</CardDescription>
+      </CardHeader>
+
+      <CardContent>
+        <p className={getStatusClassName(status)}>{message}</p>
+      </CardContent>
+
+      <CardFooter>
+        <Button disabled={isLoading} onClick={onClick}>
+          {isLoading ? (
+            <>
+              <Loader2 className="mr-2 size-4 animate-spin" />
+              Testando...
+            </>
+          ) : (
+            buttonLabel
+          )}
+        </Button>
+      </CardFooter>
+    </Card>
+  )
+}
+
+function getStatusClassName(status: RequestStatus): string {
+  const baseClassName = "rounded-lg border bg-muted/50 p-4 text-sm"
+
+  if (status === "success") {
+    return `${baseClassName} text-green-600`
+  }
+
+  if (status === "error") {
+    return `${baseClassName} text-red-500`
+  }
+
+  return `${baseClassName} text-muted-foreground`
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error
+    ? `Erro: ${error.message}`
+    : "Erro desconhecido."
 }
 
 export default App
