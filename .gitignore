@@ -3,3 +3,10 @@ __pycache__/
 .venv/
 .env
 .env.*
+
+# cc-sdd / Codex Skills artifacts
+.agents/
+.codex/
+.kiro/
+.cc-sdd.backup/
+AGENTS.md
