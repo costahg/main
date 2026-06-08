@@ -1,278 +1,185 @@
-import { useMemo, useState } from "react"
-import {
-  CheckCircle2,
-  Cloud,
-  Code2,
-  Database,
-  Loader2,
-  Server,
-} from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
+import { LockKeyhole, LogOut, Plane } from "lucide-react"
 
+import { AdminLogin } from "@/components/AdminLogin"
+import { TravelRegistrationForm } from "@/components/TravelRegistrationForm"
 import { Button } from "@/components/ui/button"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  getApiUrl,
-  getHealth,
-  getProjects,
-  type Project,
-} from "@/lib/api"
+import { getAdminSession, logoutAdmin } from "@/lib/api"
 
-type RequestStatus = "idle" | "loading" | "success" | "error"
-
-const stackItems = [
-  {
-    icon: Code2,
-    title: "Frontend",
-    description: "React estático com Vite no Cloudflare Pages.",
-  },
-  {
-    icon: Server,
-    title: "Backend",
-    description: "FastAPI separado rodando no Cloud Run.",
-  },
-  {
-    icon: Database,
-    title: "Banco",
-    description: "Supabase Postgres acessado somente pelo backend.",
-  },
-  {
-    icon: Cloud,
-    title: "Deploy",
-    description: "Fluxo provado entre domínio, API e banco.",
-  },
-]
+type AppScreen = "public_form" | "admin_login" | "admin_viewer"
 
 function App() {
-  const [healthStatus, setHealthStatus] = useState<RequestStatus>("idle")
-  const [databaseStatus, setDatabaseStatus] = useState<RequestStatus>("idle")
-  const [healthMessage, setHealthMessage] = useState("Ainda não testado.")
-  const [databaseMessage, setDatabaseMessage] = useState("Ainda não testado.")
-  const [projects, setProjects] = useState<Project[]>([])
+  const [screen, setScreen] = useState<AppScreen>("public_form")
 
-  const apiUrl = useMemo(() => getApiUrl(), [])
+  const openAdminViewer = useCallback(() => {
+    setScreen("admin_viewer")
+  }, [])
 
-  async function testBackend() {
+  const openAdminLogin = useCallback(async () => {
     try {
-      setHealthStatus("loading")
-      setHealthMessage("Chamando /health...")
+      const session = await getAdminSession()
 
-      const data = await getHealth()
-
-      setHealthStatus(data.ok ? "success" : "error")
-      setHealthMessage(data.message ?? "Backend respondeu.")
-    } catch (error) {
-      setHealthStatus("error")
-      setHealthMessage(getErrorMessage(error))
+      if (session.authenticated) {
+        setScreen("admin_viewer")
+        return
+      }
+    } catch {
+      // Session checks only restore UI state; backend routes remain authoritative.
     }
-  }
 
-  async function testProjects() {
+    setScreen("admin_login")
+  }, [])
+
+  const handleLogout = useCallback(async () => {
     try {
-      setDatabaseStatus("loading")
-      setDatabaseMessage("Chamando /projects...")
-      setProjects([])
-
-      const data = await getProjects()
-
-      setProjects(data.projects)
-      setDatabaseStatus(data.ok ? "success" : "error")
-      setDatabaseMessage(
-        data.projects.length > 0
-          ? `${data.projects.length} projeto(s) carregado(s) do Supabase.`
-          : "A API respondeu, mas ainda não há projetos."
-      )
-    } catch (error) {
-      setDatabaseStatus("error")
-      setDatabaseMessage(getErrorMessage(error))
+      await logoutAdmin()
+    } finally {
+      setScreen("public_form")
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    let isActive = true
+
+    async function restoreAdminSession() {
+      try {
+        const session = await getAdminSession()
+
+        if (isActive && session.authenticated) {
+          setScreen("admin_viewer")
+        }
+      } catch {
+        if (isActive) {
+          setScreen("public_form")
+        }
+      }
+    }
+
+    void restoreAdminSession()
+
+    return () => {
+      isActive = false
+    }
+  }, [])
 
   return (
     <main className="min-h-screen bg-background text-foreground">
-      <section className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center gap-8 px-6 py-10">
-        <header className="space-y-4 text-center">
-          <div className="mx-auto inline-flex w-fit items-center gap-2 rounded-full border bg-card px-4 py-2 text-sm text-muted-foreground shadow-sm">
-            <CheckCircle2 className="size-4" />
-            Tigrify, fatia vertical de banco
-          </div>
+      <div className="mx-auto flex min-h-screen w-full max-w-4xl flex-col px-5 py-6 sm:px-8">
+        <AppHeader onOpenAdminLogin={openAdminLogin} />
 
-          <div className="space-y-3">
-            <h1 className="text-4xl font-semibold tracking-tight sm:text-6xl">
-              Frontend, backend e banco conectados
-            </h1>
-
-            <p className="mx-auto max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
-              Esta tela valida o caminho completo: Cloudflare Pages chama o
-              Cloud Run, o FastAPI consulta o Supabase e o frontend mostra os
-              dados reais.
-            </p>
-          </div>
-        </header>
-
-        <div className="grid gap-4 md:grid-cols-4">
-          {stackItems.map((item) => {
-            const Icon = item.icon
-
-            return (
-              <Card key={item.title}>
-                <CardHeader>
-                  <div className="mb-2 flex size-10 items-center justify-center rounded-lg border bg-muted">
-                    <Icon className="size-5" />
-                  </div>
-
-                  <CardTitle>{item.title}</CardTitle>
-                  <CardDescription>{item.description}</CardDescription>
-                </CardHeader>
-              </Card>
-            )
-          })}
-        </div>
-
-        <div className="grid gap-6 lg:grid-cols-2">
-          <StatusCard
-            title="Teste do backend"
-            description="Chama /health para confirmar que o FastAPI respondeu."
-            status={healthStatus}
-            message={healthMessage}
-            buttonLabel="Testar backend"
-            onClick={testBackend}
-          />
-
-          <StatusCard
-            title="Teste do banco"
-            description="Chama /projects para carregar dados reais do Supabase."
-            status={databaseStatus}
-            message={databaseMessage}
-            buttonLabel="Carregar projetos"
-            onClick={testProjects}
-          />
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Configuração detectada</CardTitle>
-            <CardDescription>
-              O frontend usa VITE_API_URL como URL base da API.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            <p className="break-all rounded-lg border bg-muted/50 p-4 text-sm">
-              {apiUrl}
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Projetos vindos do Supabase</CardTitle>
-            <CardDescription>
-              Lista carregada pelo backend. O frontend não acessa o banco
-              diretamente.
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-3">
-            {projects.length === 0 ? (
-              <p className="rounded-lg border bg-muted/50 p-4 text-sm text-muted-foreground">
-                Nenhum projeto carregado ainda.
-              </p>
-            ) : (
-              projects.map((project) => (
-                <article
-                  key={project.id}
-                  className="rounded-lg border bg-muted/50 p-4"
-                >
-                  <h2 className="font-medium">{project.name}</h2>
-
-                  <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                    {project.notes ?? "Sem observações."}
-                  </p>
-
-                  <p className="mt-3 break-all text-xs text-muted-foreground">
-                    ID: {project.id}
-                  </p>
-                </article>
-              ))
-            )}
-          </CardContent>
-        </Card>
-      </section>
+        <section className="flex flex-1 items-center py-8">
+          {screen === "public_form" ? <PublicFormShell /> : null}
+          {screen === "admin_login" ? (
+            <AdminLoginShell onAuthenticated={openAdminViewer} />
+          ) : null}
+          {screen === "admin_viewer" ? (
+            <AdminViewerShell onLogout={handleLogout} />
+          ) : null}
+        </section>
+      </div>
     </main>
   )
 }
 
-type StatusCardProps = {
-  title: string
-  description: string
-  status: RequestStatus
-  message: string
-  buttonLabel: string
-  onClick: () => Promise<void>
+type AppHeaderProps = {
+  onOpenAdminLogin: () => void
 }
 
-function StatusCard({
-  title,
-  description,
-  status,
-  message,
-  buttonLabel,
-  onClick,
-}: StatusCardProps) {
-  const isLoading = status === "loading"
-
+function AppHeader({ onOpenAdminLogin }: AppHeaderProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        <CardDescription>{description}</CardDescription>
-      </CardHeader>
+    <header className="flex items-center justify-between gap-4">
+      <button
+        type="button"
+        aria-label="Abrir login administrativo"
+        className="flex size-12 items-center justify-center rounded-full border bg-foreground text-background shadow-sm transition-colors hover:bg-foreground/85 focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+        onClick={onOpenAdminLogin}
+      >
+        <span aria-hidden="true" className="text-base font-semibold">
+          T
+        </span>
+      </button>
 
-      <CardContent>
-        <p className={getStatusClassName(status)}>{message}</p>
-      </CardContent>
-
-      <CardFooter>
-        <Button disabled={isLoading} onClick={onClick}>
-          {isLoading ? (
-            <>
-              <Loader2 className="mr-2 size-4 animate-spin" />
-              Testando...
-            </>
-          ) : (
-            buttonLabel
-          )}
-        </Button>
-      </CardFooter>
-    </Card>
+      <p className="text-sm font-medium text-muted-foreground">Tigrify</p>
+    </header>
   )
 }
 
-function getStatusClassName(status: RequestStatus): string {
-  const baseClassName = "rounded-lg border bg-muted/50 p-4 text-sm"
+function PublicFormShell() {
+  return (
+    <div className="w-full">
+      <div className="mb-8 space-y-2">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <Plane className="size-4" />
+          Cadastro operacional
+        </div>
 
-  if (status === "success") {
-    return `${baseClassName} text-green-600`
-  }
+        <h1 className="text-3xl font-semibold tracking-normal sm:text-4xl">
+          Registro de viagem
+        </h1>
 
-  if (status === "error") {
-    return `${baseClassName} text-red-500`
-  }
+        <p className="max-w-2xl text-base leading-7 text-muted-foreground">
+          Informe os dados principais para iniciar uma solicitação.
+        </p>
+      </div>
 
-  return `${baseClassName} text-muted-foreground`
+      <TravelRegistrationForm />
+    </div>
+  )
 }
 
-function getErrorMessage(error: unknown): string {
-  return error instanceof Error
-    ? `Erro: ${error.message}`
-    : "Erro desconhecido."
+type AdminLoginShellProps = {
+  onAuthenticated: () => void
+}
+
+function AdminLoginShell({ onAuthenticated }: AdminLoginShellProps) {
+  return (
+    <div className="w-full max-w-sm">
+      <div className="mb-6 space-y-2">
+        <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+          <LockKeyhole className="size-4" />
+          Área restrita
+        </div>
+
+        <h1 className="text-3xl font-semibold tracking-normal">
+          Acesso administrativo
+        </h1>
+      </div>
+
+      <AdminLogin onAuthenticated={onAuthenticated} />
+    </div>
+  )
+}
+
+type AdminViewerShellProps = {
+  onLogout: () => void
+}
+
+function AdminViewerShell({ onLogout }: AdminViewerShellProps) {
+  return (
+    <div className="w-full space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+            <LockKeyhole className="size-4" />
+            Sessão administrativa
+          </div>
+
+          <h1 className="text-3xl font-semibold tracking-normal">
+            Registros administrativos
+          </h1>
+        </div>
+
+        <Button type="button" variant="outline" onClick={onLogout}>
+          <LogOut className="size-4" aria-hidden="true" />
+          Sair
+        </Button>
+      </div>
+
+      <div className="border-y py-5 text-sm text-muted-foreground" role="status">
+        Visualizador administrativo pronto.
+      </div>
+    </div>
+  )
 }
 
 export default App
