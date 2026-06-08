@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react"
 import { LockKeyhole, LogOut, Plane } from "lucide-react"
 
 import { AdminLogin } from "@/components/AdminLogin"
+import { AdminRegistrationsTable } from "@/components/AdminRegistrationsTable"
 import { TravelRegistrationForm } from "@/components/TravelRegistrationForm"
 import { Button } from "@/components/ui/button"
 import { getAdminSession, logoutAdmin } from "@/lib/api"
@@ -175,9 +176,7 @@ function AdminViewerShell({ onLogout }: AdminViewerShellProps) {
         </Button>
       </div>
 
-      <div className="border-y py-5 text-sm text-muted-foreground" role="status">
-        Visualizador administrativo pronto.
-      </div>
+      <AdminRegistrationsTable />
     </div>
   )
 }
